@@ -20,7 +20,7 @@ namespace PrayerTimes.API.Services
             _logger = logger;
         }
 
-        // Fetches daily prayer times for a city with error handling
+        // Fetches daily prayer times for a city
         public async Task<PrayerTimings?> GetDailyPrayerTimesAsync(string city, string country)
         {
             try
@@ -45,7 +45,7 @@ namespace PrayerTimes.API.Services
             }
         }
 
-        // Fetches monthly prayer times with error handling
+        // Fetches monthly prayer times
         public async Task<List<PrayerTimings>?> GetMonthlyPrayerTimesAsync(string city, string country, int month, int year)
         {
             try
@@ -70,7 +70,7 @@ namespace PrayerTimes.API.Services
             }
         }
 
-        // Fetches prayer times by GPS coordinates with error handling
+        // Fetches prayer times by GPS coordinates
         public async Task<PrayerTimings?> GetPrayerTimesByCoordinatesAsync(double latitude, double longitude, int method = 2)
         {
             try

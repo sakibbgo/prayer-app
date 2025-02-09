@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace PrayerTimes.API.Models
 {
-    public class PrayerTimings // Renamed from PrayerTimes to PrayerTimings
+    public class PrayerTimings
     {
         [JsonPropertyName("Fajr")]
         public string Fajr { get; set; } = string.Empty;
