@@ -1,10 +1,18 @@
-bin/
-obj/
+# Ignore Visual Studio temporary files
+.vs/
+*.vscode/
 *.user
 *.suo
-.vscode/
-.idea/
-*.swp
-*.tmp
-*.log
-.DS_Store
+
+# Ignore build output
+bin/
+obj/
+
+# Ignore SQLite and temporary files
+*.sqlite
+*.vsidx
+*.vscode/
+
+# Ignore other IDE metadata
+*.DS_Store
+*.idea/

@@ -1,48 +1,38 @@
+using PrayerTimes.API.Services;
+
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+// Configure Kestrel to support both HTTP and HTTPS
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.ListenLocalhost(5000); // HTTP binding
+    options.ListenLocalhost(5001, listenOptions =>
+    {
+        listenOptions.UseHttps(); // HTTPS binding
+    });
+});
+
+// Register the PrayerTimeService (Fixing the error)
+builder.Services.AddHttpClient<PrayerTimeService>();
+
+// Add services to the container
+builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer(); // Enables minimal APIs for Swagger
 builder.Services.AddSwaggerGen(); // Adds Swagger generation
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
     app.UseSwagger();
     app.UseSwaggerUI(); // Enables the Swagger UI
 }
 
 app.UseHttpsRedirection();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
-
-app.MapGet("/", () => "Welcome to the Prayer Times API!");
-
+// Add a default route for the root endpoint
+app.MapControllers();
 
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
