@@ -29,28 +29,17 @@ namespace PrayerTimes.API.Controllers
             return Ok(prayerTimes);
         }
 
-        // Improved: Get monthly prayer times
-        [HttpGet("monthly/{city}/{country}/{month}/{year}")]
-        public async Task<IActionResult> GetMonthlyPrayerTimes(string city, string country, int month, int year)
-        {
-            var prayerTimes = await _prayerTimeService.GetMonthlyPrayerTimesAsync(city, country, month, year);
-
-            if (prayerTimes == null || prayerTimes.Count == 0)
-                return NotFound(new { message = "Could not fetch monthly prayer times. Try again later." });
-
-            return Ok(prayerTimes);
-        }
-
         // Improved: Get prayer times by coordinates
-        [HttpGet("coordinates")]
-        public async Task<IActionResult> GetPrayerTimesByCoordinates([FromQuery] double lat, [FromQuery] double lon, [FromQuery] int method = 2)
+        [HttpGet("daily-by-coordinates")]
+        public async Task<IActionResult> GetDailyPrayerTimesByCoordinates(double latitude, double longitude)
         {
-            var prayerTimes = await _prayerTimeService.GetPrayerTimesByCoordinatesAsync(lat, lon, method);
+            var result = await _prayerTimeService.GetDailyPrayerTimesByCoordinatesAsync(latitude, longitude);
 
-            if (prayerTimes == null)
-                return NotFound(new { message = "Could not fetch prayer times for given coordinates." });
+            if (!result.IsSuccess)
+                return BadRequest(new { error = result.ErrorMessage });
 
-            return Ok(prayerTimes);
+            return Ok(result.Data);
         }
+
     }
 }

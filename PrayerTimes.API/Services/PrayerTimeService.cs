@@ -1,10 +1,9 @@
+using System;
 using System.Net.Http;
 using System.Text.Json;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using PrayerTimes.API.Models;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace PrayerTimes.API.Services
 {
@@ -20,111 +19,108 @@ namespace PrayerTimes.API.Services
             _logger = logger;
         }
 
-        // Fetches daily prayer times for a city
-        public async Task<PrayerTimings?> GetDailyPrayerTimesAsync(string city, string country)
+        public async Task<ApiResponse<PrayerTimings>> GetDailyPrayerTimesAsync(string city, string country)
         {
+            if (string.IsNullOrWhiteSpace(city))
+                throw new ArgumentException("City cannot be empty.", nameof(city));
+
+            if (string.IsNullOrWhiteSpace(country))
+                throw new ArgumentException("Country cannot be empty.", nameof(country));
+
             try
             {
                 var apiUrl = $"{BaseUrl}/timingsByCity?city={city}&country={country}";
-                return await FetchPrayerTimes(apiUrl);
+                var response = await _httpClient.GetAsync(apiUrl);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogError($"API call failed: {response.StatusCode} - {response.ReasonPhrase}");
+                    return ApiResponse<PrayerTimings>.Fail($"Failed to fetch prayer times. Status Code: {response.StatusCode}");
+                }
+
+                var content = await response.Content.ReadAsStringAsync();
+                var prayerData = JsonSerializer.Deserialize<DailyPrayerTimeResponse>(content);
+
+                if (prayerData?.Data?.Timings == null)
+                {
+                    _logger.LogError("API response format is invalid.");
+                    return ApiResponse<PrayerTimings>.Fail("Invalid response from the API.");
+                }
+
+                return ApiResponse<PrayerTimings>.Success(prayerData.Data.Timings);
             }
             catch (HttpRequestException ex)
             {
-                _logger.LogError($"HTTP error fetching daily prayer times: {ex.Message}");
-                return null;
+                _logger.LogError($"Network error while fetching prayer times: {ex.Message}");
+                return ApiResponse<PrayerTimings>.Fail("Network error. Please check your connection.");
+            }
+            catch (TaskCanceledException)
+            {
+                _logger.LogError("API request timed out.");
+                return ApiResponse<PrayerTimings>.Fail("Request timed out. Try again later.");
             }
             catch (JsonException ex)
             {
-                _logger.LogError($"JSON deserialization error: {ex.Message}");
-                return null;
+                _logger.LogError($"Error parsing API response: {ex.Message}");
+                return ApiResponse<PrayerTimings>.Fail("Error processing server response.");
             }
             catch (Exception ex)
             {
                 _logger.LogError($"Unexpected error: {ex.Message}");
-                return null;
+                return ApiResponse<PrayerTimings>.Fail("An unexpected error occurred. Please try again.");
             }
         }
-
-        // Fetches monthly prayer times
-        public async Task<List<PrayerTimings>?> GetMonthlyPrayerTimesAsync(string city, string country, int month, int year)
+        public async Task<ApiResponse<PrayerTimings>> GetDailyPrayerTimesByCoordinatesAsync(double latitude, double longitude, int method = 2)
         {
-            try
-            {
-                var apiUrl = $"{BaseUrl}/calendarByCity?city={city}&country={country}&month={month}&year={year}";
-                return await FetchMonthlyPrayerTimes(apiUrl);
-            }
-            catch (HttpRequestException ex)
-            {
-                _logger.LogError($"HTTP error fetching monthly prayer times: {ex.Message}");
-                return null;
-            }
-            catch (JsonException ex)
-            {
-                _logger.LogError($"JSON deserialization error: {ex.Message}");
-                return null;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Unexpected error: {ex.Message}");
-                return null;
-            }
-        }
+            if (latitude < -90 || latitude > 90)
+                throw new ArgumentException("Latitude must be between -90 and 90.", nameof(latitude));
 
-        // Fetches prayer times by GPS coordinates
-        public async Task<PrayerTimings?> GetPrayerTimesByCoordinatesAsync(double latitude, double longitude, int method = 2)
-        {
+            if (longitude < -180 || longitude > 180)
+                throw new ArgumentException("Longitude must be between -180 and 180.", nameof(longitude));
+
             try
             {
                 var apiUrl = $"{BaseUrl}/timings?latitude={latitude}&longitude={longitude}&method={method}";
-                return await FetchPrayerTimes(apiUrl);
+                var response = await _httpClient.GetAsync(apiUrl);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogError($"API call failed: {response.StatusCode} - {response.ReasonPhrase}");
+                    return ApiResponse<PrayerTimings>.Fail($"Failed to fetch prayer times. Status Code: {response.StatusCode}");
+                }
+
+                var content = await response.Content.ReadAsStringAsync();
+                var prayerData = JsonSerializer.Deserialize<DailyPrayerTimeResponse>(content);
+
+                if (prayerData?.Data?.Timings == null)
+                {
+                    _logger.LogError("API response format is invalid.");
+                    return ApiResponse<PrayerTimings>.Fail("Invalid response from the API.");
+                }
+
+                return ApiResponse<PrayerTimings>.Success(prayerData.Data.Timings);
             }
             catch (HttpRequestException ex)
             {
-                _logger.LogError($"HTTP error fetching prayer times by coordinates: {ex.Message}");
-                return null;
+                _logger.LogError($"Network error while fetching prayer times: {ex.Message}");
+                return ApiResponse<PrayerTimings>.Fail("Network error. Please check your connection.");
+            }
+            catch (TaskCanceledException)
+            {
+                _logger.LogError("API request timed out.");
+                return ApiResponse<PrayerTimings>.Fail("Request timed out. Try again later.");
             }
             catch (JsonException ex)
             {
-                _logger.LogError($"JSON deserialization error: {ex.Message}");
-                return null;
+                _logger.LogError($"Error parsing API response: {ex.Message}");
+                return ApiResponse<PrayerTimings>.Fail("Error processing server response.");
             }
             catch (Exception ex)
             {
                 _logger.LogError($"Unexpected error: {ex.Message}");
-                return null;
+                return ApiResponse<PrayerTimings>.Fail("An unexpected error occurred. Please try again.");
             }
         }
 
-        // Generic method to fetch daily prayer times
-        private async Task<PrayerTimings?> FetchPrayerTimes(string apiUrl)
-        {
-            var response = await _httpClient.GetAsync(apiUrl);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                _logger.LogError($"API call failed: {response.StatusCode}");
-                return null;
-            }
-
-            var content = await response.Content.ReadAsStringAsync();
-            var prayerData = JsonSerializer.Deserialize<DailyPrayerTimeResponse>(content);
-            return prayerData?.Data?.Timings;
-        }
-
-        // Generic method to fetch monthly prayer times
-        private async Task<List<PrayerTimings>?> FetchMonthlyPrayerTimes(string apiUrl)
-        {
-            var response = await _httpClient.GetAsync(apiUrl);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                _logger.LogError($"API call failed: {response.StatusCode}");
-                return null;
-            }
-
-            var content = await response.Content.ReadAsStringAsync();
-            var prayerData = JsonSerializer.Deserialize<MonthlyPrayerTimesResponse>(content);
-            return prayerData?.Data?.Select(d => d.Timings).ToList();
-        }
     }
 }
